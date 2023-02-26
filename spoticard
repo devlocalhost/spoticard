@@ -4,7 +4,7 @@
 spotify lyrics card maker
 """
 
-from os import makedirs, remove, getenv
+from os import makedirs, remove, getenv, environ
 from time import time
 from glob import glob
 from textwrap import TextWrapper
@@ -12,7 +12,7 @@ from textwrap import TextWrapper
 from re import sub
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
 from requests import get, post
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 import numpy as np
 
@@ -123,24 +123,24 @@ def elapsed(count_type=None):
 def token_validity():
     """check if token is valid"""
 
-    with open("tkn", "r", encoding="utf-8") as file_token:
-        token = file_token.read().rstrip().strip()
+    token = getenv("TOKEN")
 
-        headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token}"}
 
-        req_resp = get(
-            "https://api.spotify.com/v1/search?q=home+resonance&type=track",
-            headers=headers,
-            timeout=30,
-        ).status_code
+    req_resp = get(
+        "https://api.spotify.com/v1/search?q=home+resonance&type=track",
+        headers=headers,
+        timeout=30,
+    ).status_code
 
-        if req_resp != 200:
-            token = generate_token()
+    if req_resp != 200:
+        token = generate_token()
 
-            with open("tkn", "w", encoding="utf-8") as tkn_file:
-                tkn_file.write(token)
+        environ["TOKEN"] = token
+        set_key(".env", "TOKEN", environ["TOKEN"])
+        environ.pop("TOKEN", None)
 
-        return token
+    return token
 
 
 tkn = token_validity()
