@@ -9,14 +9,13 @@ spotify lyrics card creator
 ```
    Usage:
  ./spoticard TRACK_ID "LYRICS" TIMESTAMP ... ...
- Example: ./spoticard 61dXty0FR61qyVczdM49F4 "Winner, God know I'm a winner, When she pull up on me I be in her, I'ma eat out shawty like a dinner, Money comin' in it's like a printer, If she leaving shawty getting thinner
-I'm like who got the keys? For real, Who got the keys? Yeah for real, I'm like who got the keys to the— uh, yeah, Who got the keys to the Bimmer?
-Shawty she just a beginner huh, She look like Brittany no Renner huh" 1:40
+ Example: ./spoticard 61dXty0FR61qyVczdM49F4 "Winner, God know I'm a winner, When she pull up on me I be in her, I'ma eat out shawty like a dinner, Money comin' in it's like a printer, If she leaving shawty getting thinner#nlI'm like who got the keys? For real, Who got the keys? Yeah for real, I'm like who got the keys to the— uh, yeah, Who got the keys to the Bimmer?#nlShawty she just a beginner huh, She look like Brittany no Renner huh" 1:40
 
 Arguments and how to use them: (* = required)
  *  track_id: the id of the song
  *    lyrics: lyrics of the song. i suggest to format it to look good, for example
               breaking lines or adding newlines when there is supposed to be a newline
+              USE "#NL" FOR A NEWLINE!!
  * timestamp: the timestamp of the lyrics
 
    lyrics_brightness: how bright the lyrics text should be, 4th argument. default:    1
