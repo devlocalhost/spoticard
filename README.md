@@ -2,8 +2,8 @@
 spotify lyrics card creator
 
 # samples
-![example 1](output.png)
-![example 2](output1.png)
+![example 1](samples/output.png)
+![example 2](samples/output1.png)
 
 # how to use, help and usage
 ```
