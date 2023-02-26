@@ -1,0 +1,329 @@
+#!/usr/bin/env python3
+
+"""
+spotify lyrics card maker
+"""
+
+from os import makedirs, remove, getenv
+from time import time
+from glob import glob
+from textwrap import TextWrapper
+
+from re import sub
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+from requests import get, post
+from dotenv import load_dotenv
+
+import numpy as np
+
+load_dotenv()
+
+spotify_token = None
+
+# thanks to stackoverflow ----------- \/
+
+
+class DocumentWrapper(TextWrapper):
+    """text wrapping for lyrics"""
+
+    def wrap(self, text):
+        return [
+            line for para in text.split("\n") for line in TextWrapper.wrap(self, para)
+        ]
+
+
+def add_corners(image, rad):
+    """adding corners to the image"""
+
+    circle = Image.new("L", (rad * 2, rad * 2), 0)
+
+    img_draw = ImageDraw.Draw(circle)
+    img_draw.ellipse((0, 0, rad * 2, rad * 2), fill=255)
+
+    alpha = Image.new("L", image.size, 255)
+
+    alpha.paste(circle.crop((0, 0, rad, rad)), (0, 0))
+    alpha.paste(circle.crop((0, rad, rad, rad * 2)), (0, image.size[1] - rad))
+    alpha.paste(circle.crop((rad, 0, rad * 2, rad)), (image.size[0] - rad, 0))
+
+    alpha.paste(
+        circle.crop((rad, rad, rad * 2, rad * 2)),
+        (image.size[0] - rad, image.size[1] - rad),
+    )
+
+    image.putalpha(alpha)
+
+    return image
+
+
+def common_color(image, text_brightness):
+    """getting the most common color of the image"""
+
+    r_color, g_color, b_color, count = 0, 0, 0, 0
+
+    for img_width in range(0, image.size[0]):
+        for img_height in range(0, image.size[1]):
+            pix_data = image.getpixel((img_width, img_height))
+
+            r_color += pix_data[0]
+            g_color += pix_data[1]
+            b_color += pix_data[2]
+
+            count += 1
+
+    r = int(min(255, (r_color / count) * text_brightness))
+    g = int(min(255, (g_color / count) * text_brightness))
+    b = int(min(255, (b_color / count) * text_brightness))
+
+    if (r, g, b) < (30, 30, 30):
+        r += 100
+        b += 100
+        g += 100
+
+    return (r, g, b)
+
+    # return (int(r_color / count), int(g_color / count), int(b_color / count))
+    # return f"{int(r_color / count)},{int(g_color / count)},{int(b_color / count)}"
+
+
+# thanks to stackoverflow ----------- /\
+
+
+def generate_token():
+    """generate spotify token"""
+
+    CLIENT_ID = getenv("CLIENT_ID")
+    CLIENT_SECRET = getenv("CLIENT_SECRET")
+    AUTH_URL = "https://accounts.spotify.com/api/token"
+
+    req_resp = post(
+        AUTH_URL,
+        {
+            "grant_type": "client_credentials",
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+        },
+        timeout=30,
+    )
+
+    return req_resp.json()["access_token"]
+
+
+def elapsed(count_type=None):
+    """counting time between functions"""
+
+    global start
+
+    if count_type == "s":
+        start = time()
+
+    return f"{str(time() - start)[:4]} seconds"
+
+
+def token_validity():
+    """check if token is valid"""
+
+    with open("tkn", "r", encoding="utf-8") as file_token:
+        token = file_token.read().rstrip().strip()
+
+        headers = {"Authorization": f"Bearer {token}"}
+
+        req_resp = get(
+            "https://api.spotify.com/v1/search?q=home+resonance&type=track",
+            headers=headers,
+            timeout=30,
+        ).status_code
+
+        if req_resp != 200:
+            token = generate_token()
+
+            with open("tkn", "w", encoding="utf-8") as tkn_file:
+                tkn_file.write(token)
+
+        return token
+
+
+tkn = token_validity()
+
+auth_headers = {"Authorization": f"Bearer {tkn}"}
+track_id = "61dXty0FR61qyVczdM49F4"
+
+resp = get(
+    f"https://api.spotify.com/v1/tracks/{track_id}", headers=auth_headers, timeout=30
+).json()
+
+title = sub(r"\([^()]*\)", "", resp["name"])
+title = sub(" +", " ", title)
+
+artist = ", ".join(i["name"] for i in resp["artists"])
+
+elapsed("s")
+print("          Downloading cover...", sep=" ", end=" ", flush=True)
+
+with open("temp/input.jpg", "wb") as cover_img:
+    cover_img.write(
+        get(resp["album"]["images"][0]["url"], headers=auth_headers, timeout=30).content
+    )
+print(elapsed())
+
+timestamp = "0:00"
+lyrics = "LYRICS HERE"
+
+title = title[:34] + "..." if len(title) > 37 else title
+artist = artist[:34] + "..." if len(artist) > 37 else artist
+
+lyrics_text_brightness = 1
+brightness_value = 0.50  # 1 is default
+roundness_value = 30
+blurness_value = 7
+normal_font = 44
+small_font = 36
+
+makedirs("temp", exist_ok=True)
+
+# if len(title) > 27 or len(artist) > 27 or len(lyrics) > 435:
+#     print(title)
+#     exit(f"Character limit reached. Title and artist limit is max 27 characters, and lyrics is max 435 characters\n\n  Title has {len(title)} total characters\n Artist has {len(artist)} total characters\n Lyrics has {len(lyrics)} total characters")
+
+started_running = time()
+
+elapsed("s")
+print("  Getting most common color...", sep=" ", end=" ", flush=True)
+
+common_color = common_color(Image.open("temp/input.jpg"), lyrics_text_brightness)
+
+print(elapsed())
+
+elapsed("s")
+print("        Checking resolution...", sep=" ", end=" ", flush=True)
+res = Image.open("temp/input.jpg").size
+print(elapsed())
+
+elapsed("s")
+if (
+    int(res[0]) != int(res[1])
+    or (int(res[0]) and int(res[1])) > 840
+    or (int(res[0]) and int(res[1])) < 840
+):
+    print("        Changing to 840x840...", sep=" ", end=" ", flush=True)
+
+    edit_res = Image.open("temp/input.jpg").resize((840, 840))
+    edit_res.save("temp/input.jpg", quality=100)
+    print(elapsed())
+
+print("        Changing brightness...", sep=" ", end=" ", flush=True)
+
+brightness_value_filter = ImageEnhance.Brightness(Image.open("temp/input.jpg"))
+brightness_value_output = brightness_value_filter.enhance(brightness_value)
+brightness_value_output.save("temp/brightness_value.jpg", quality=100)
+print(elapsed())
+
+elapsed("s")
+print("                   Cropping...", sep=" ", end=" ", flush=True)
+
+crop_img = Image.open("temp/brightness_value.jpg")
+crop_img.copy().crop((0, 165, 840, 685)).save("temp/crop.jpg", quality=100)
+print(elapsed())
+
+elapsed("s")
+print("                Adding blur...", sep=" ", end=" ", flush=True)
+
+blur = Image.open("temp/crop.jpg")
+blur_out = blur.filter(ImageFilter.BoxBlur(blurness_value))
+blur_out.save("temp/blur.jpg", quality=100)
+print(elapsed())
+
+img_temp = Image.open("temp/blur.jpg")
+
+draw = ImageDraw.Draw(img_temp)
+font = ImageFont.truetype("fonts/PatrickHand-Regular.ttf", normal_font)
+font_small = ImageFont.truetype("fonts/PatrickHand-Regular.ttf", small_font)
+
+elapsed("s")
+print("                Adding text...", sep=" ", end=" ", flush=True)
+
+# title
+draw.text(
+    (20, int(img_temp.size[1]) - 119),
+    title,
+    (common_color[0], common_color[1], common_color[2]),
+    font=font,
+)
+
+# artist
+draw.text(
+    (20, int(img_temp.size[1]) - 69),
+    artist,
+    (common_color[0], common_color[1], common_color[2]),
+    font=font,
+)
+
+# timestamp
+draw.text(
+    (750, 440),
+    timestamp,
+    (common_color[0], common_color[1], common_color[2]),
+    font=font_small,
+)
+
+# lyrics
+draw.text(
+    (20, 8),
+    DocumentWrapper(width=57).fill(lyrics),
+    (common_color[0], common_color[1], common_color[2]),
+    font=font_small,
+)
+print(elapsed())
+
+elapsed("s")
+print("Changing spotify logo color...", sep=" ", end=" ", flush=True)
+
+spotify_logo = Image.open("spotify.png").convert("RGBA")
+
+orig_color = (30, 215, 96, 255)
+# orig_color = (255,255,255,255)
+replacement_color = (
+    int(common_color[0]),
+    int(common_color[1]),
+    int(common_color[2]),
+    255,
+)
+
+array_data = np.array(spotify_logo)
+array_data[(array_data == orig_color).all(axis=-1)] = replacement_color
+
+spotify_temp = Image.fromarray(array_data, mode="RGBA")
+spotify_temp.save("temp/spotify-edit.png")
+print(elapsed())
+
+elapsed("s")
+print("       Pasting Spotify logo...", sep=" ", end=" ", flush=True)
+
+spotify_logo = Image.open("temp/spotify-edit.png").resize((48, 48))
+img_temp.paste(spotify_logo, (778, 15), spotify_logo)
+
+img_temp.save("temp/p_final.jpg", quality=100)
+print(elapsed())
+
+elapsed("s")
+print("           Rounding corners...", sep=" ", end=" ", flush=True)
+
+final_image = Image.open("temp/p_final.jpg")
+output = add_corners(final_image, roundness_value)
+print(elapsed())
+
+elapsed("s")
+print("        Saving final result...", sep=" ", end=" ", flush=True)
+
+output.save("output.png", quality=100)
+print(elapsed())
+
+elapsed("s")
+print("           Cleaning garbage...", sep=" ", end=" ", flush=True)
+
+for file in glob("temp/*"):
+    remove(file)
+print(elapsed())
+
+print("                       Done")
+print(f"                       ExTi... {str(time() - started_running)[:4]} seconds")
