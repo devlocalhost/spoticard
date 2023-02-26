@@ -5,6 +5,7 @@ spotify lyrics card maker
 """
 
 from os import makedirs, remove, getenv, environ
+from sys import exit as s_exit, argv
 from time import time
 from glob import glob
 from textwrap import TextWrapper
@@ -142,11 +143,43 @@ def token_validity():
 
     return token
 
+def arg_exists(arg):
+    """
+    checks if an argument exist and return True else False
+    """
+
+    try:
+        argv[arg]
+        return True
+
+    except IndexError:
+        return False
+
 
 tkn = token_validity()
 
 auth_headers = {"Authorization": f"Bearer {tkn}"}
-track_id = "61dXty0FR61qyVczdM49F4"
+
+if arg_exists(1):
+    track_id = argv[1]
+
+else:
+    s_exit("spoticard - a spotify lyrics card image creator\n\n   Usage:\n ./spoticard TRACK_ID \"LYRICS\" TIMESTAMP ... ...\n Example: ./spoticard 61dXty0FR61qyVczdM49F4 \"Winner, God know I\'m a winner, When she pull up on me I be in her, I\'ma eat out shawty like a dinner, Money comin\' in it\'s like a printer, If she leaving shawty getting thinner\nI\'m like who got the keys? For real, Who got the keys? Yeah for real, I\'m like who got the keys to the— uh, yeah, Who got the keys to the Bimmer?\nShawty she just a beginner huh, She look like Brittany no Renner huh\" 1:40\n\nArguments and how to use them: (* = required)\n *  track_id: the id of the song\n *    lyrics: lyrics of the song. i suggest to format it to look good, for example\n              breaking lines or adding newlines when there is supposed to be a newline\n * timestamp: the timestamp of the lyrics\n\n   lyrics_brightness: how bright the lyrics text should be, 4th argument. default:    1\n    brightness_value: the backgrounds image brightness.                   default: 0.50\n     roundness_value: how rounded the corners should be.                  default:   30\n      blurness_value: how blurredd the background image should be.        default:    7\n         normal_font: the size of artist and title.                       default:   44\n          small_font:             lyrics and timestamp.                   default:   36")
+
+if arg_exists(2) and arg_exists(3):
+    lyrics = argv[2]
+    timestamp = argv[3]
+
+else:
+    s_exit("Not enough arguments given")
+
+lyrics_text_brightness = float(argv[4]) if arg_exists(4) else 1
+brightness_value = float(argv[5]) if arg_exists(5) else 0.50
+roundness_value = float(argv[6]) if arg_exists(6) else 30
+blurness_value = float(argv[7]) if arg_exists(7) else 7
+normal_font = float(arg[8]) if arg_exists(8) else 44
+small_font = float(argv[9]) if arg_exists(9) else 36
+
 
 resp = get(
     f"https://api.spotify.com/v1/tracks/{track_id}", headers=auth_headers, timeout=30
@@ -154,8 +187,10 @@ resp = get(
 
 title = sub(r"\([^()]*\)", "", resp["name"])
 title = sub(" +", " ", title)
+title = title[:34] + "..." if len(title) > 37 else title
 
 artist = ", ".join(i["name"] for i in resp["artists"])
+artist = artist[:34] + "..." if len(artist) > 37 else artist
 
 elapsed("s")
 print("          Downloading cover...", sep=" ", end=" ", flush=True)
@@ -166,24 +201,10 @@ with open("temp/input.jpg", "wb") as cover_img:
     )
 print(elapsed())
 
-timestamp = "0:00"
-lyrics = "LYRICS HERE"
-
-title = title[:34] + "..." if len(title) > 37 else title
-artist = artist[:34] + "..." if len(artist) > 37 else artist
-
-lyrics_text_brightness = 1
-brightness_value = 0.50  # 1 is default
-roundness_value = 30
-blurness_value = 7
-normal_font = 44
-small_font = 36
-
 makedirs("temp", exist_ok=True)
 
-# if len(title) > 27 or len(artist) > 27 or len(lyrics) > 435:
-#     print(title)
-#     exit(f"Character limit reached. Title and artist limit is max 27 characters, and lyrics is max 435 characters\n\n  Title has {len(title)} total characters\n Artist has {len(artist)} total characters\n Lyrics has {len(lyrics)} total characters")
+# if len(lyrics) > 500:
+#     exit(f"Character limit reached. Lyrics can have max 500 characters, has {len(lyrics)} characters instead")
 
 started_running = time()
 
