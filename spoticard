@@ -348,5 +348,8 @@ for file in glob("temp/*"):
     remove(file)
 print(elapsed())
 
+environ.pop("CLIENT_ID", None)
+environ.pop("CLIENT_SECRET", None)
+
 print("                       Done")
 print(f"                       ExTi... {str(time() - started_running)[:4]} seconds")
