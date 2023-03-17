@@ -177,7 +177,7 @@ else:
 
 lyrics_text_brightness = float(argv[4]) if arg_exists(4) else 1
 brightness_value = float(argv[5]) if arg_exists(5) else 0.50
-roundness_value = float(argv[6]) if arg_exists(6) else 30
+roundness_value = int(argv[6]) if arg_exists(6) else 30
 blurness_value = float(argv[7]) if arg_exists(7) else 7
 normal_font = float(arg[8]) if arg_exists(8) else 44
 small_font = float(argv[9]) if arg_exists(9) else 36
