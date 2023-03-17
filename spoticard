@@ -169,7 +169,7 @@ else:
 newline_char = "\n"
 
 if arg_exists(2) and arg_exists(3):
-    lyrics = argv[2].replace("#nl", newline_char)
+    lyrics = argv[2].replace("#NL", newline_char)
     timestamp = argv[3]
 
 else:
