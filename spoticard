@@ -197,13 +197,13 @@ artist = artist[:34] + "..." if len(artist) > 37 else artist
 elapsed("s")
 print("          Downloading cover...", sep=" ", end=" ", flush=True)
 
+makedirs("temp", exist_ok=True)
+
 with open("temp/input.jpg", "wb") as cover_img:
     cover_img.write(
         get(resp["album"]["images"][0]["url"], headers=auth_headers, timeout=30).content
     )
 print(elapsed())
-
-makedirs("temp", exist_ok=True)
 
 # if len(lyrics) > 500:
 #     exit(f"Character limit reached. Lyrics can have max 500 characters, has {len(lyrics)} characters instead")
